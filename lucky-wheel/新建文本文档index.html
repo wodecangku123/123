@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="幸运大转盘">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="幸运大转盘 - 支持权重概率、图片、管理后台">
+    <title>幸运大转盘</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card-bg: #16213e;
+            --accent: #e94560;
+            --accent2: #f5c518;
+            --text: #e0e0e0;
+            --text-secondary: #a0a0b8;
+            --border: #2a2a4a;
+            --input-bg: #1e1e36;
+            --btn-primary: #e94560;
+            --btn-primary-hover: #ff6b81;
+            --btn-secondary: #3a3a5c;
+            --btn-danger: #c0392b;
+            --btn-success: #27ae60;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 6px;
+            --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+            --safe-bottom: env(safe-area-inset-bottom, 16px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            background-image: radial-gradient(ellipse at center, #1e2a3a 0%, #0d1117 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            padding: 16px;
+            padding-bottom: calc(var(--safe-bottom) + 16px);
+            overflow-x: hidden;
+        }
+
+        /* ========== Header ========== */
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 500px;
+        }
+        .header .title {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            background: linear-gradient(135deg, #f5c518, #ff6b81, #f5c518);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            cursor: pointer;
+            display: inline-block;
+            padding: 6px 16px;
+            position: relative;
+            transition: transform 0.2s;
+        }
+        .header .title:active {
+            transform: scale(0.95);
+        }
+        .header .title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            border-radius: 2px;
+            background: var(--accent2);
+            opacity: 0.6;
+        }
+        .header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+            letter-spacing: 0.02em;
+        }
+
+        /* ========== Main Container ========== */
+        .main-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+        }
+
+        /* ========== Wheel Wrapper ========== */
+        .wheel-wrapper {
+            position: relative;
+            width: min(85vw, 420px);
+            height: min(85vw, 420px);
+            flex-shrink: 0;
+        }
+        .wheel-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.05), 0 0 0 16px rgba(0, 0, 0, 0.3), 0 0 60px rgba(233, 68, 96, 0.2),
+                0 0 120px rgba(245, 197, 24, 0.08);
+            transition: box-shadow 0.5s;
+        }
+        .wheel-container.spinning {
+            box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.08), 0 0 0 16px rgba(0, 0, 0, 0.35), 0 0 80px rgba(233, 68, 96, 0.4),
+                0 0 160px rgba(245, 197, 24, 0.2);
+        }
+        canvas#wheelCanvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: block;
+        }
+        /* Pointer */
+        .pointer {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-top: 32px solid #f5c518;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+            z-index: 10;
+            transition: filter 0.3s;
+        }
+        .wheel-container.spinning~.pointer {
+            filter: drop-shadow(0 4px 16px rgba(245, 197, 24, 0.7));
+            animation: pointerPulse 0.3s ease-in-out infinite;
+        }
+        @keyframes pointerPulse {
+            0%,
+            100% {
+                transform: translateX(-50%) scale(1);
+            }
+            50% {
+                transform: translateX(-50%) scale(1.08);
+            }
+        }
+        /* Center dot */
+        .center-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #fff, #ddd 40%, #999 100%);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* ========== Info Bar ========== */
+        .info-bar {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow);
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .info-bar span {
+            white-space: nowrap;
+        }
+        .info-bar .count {
+            color: var(--accent2);
+            font-weight: 700;
+            font-size: 1rem;
+        }
+        .info-bar .limit {
+            color: #ff6b81;
+        }
+
+        /* ========== Buttons ========== */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 420px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 14px 28px;
+            font-size: 1rem;
+            font-weight: 700;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.03em;
+            transition: all 0.25s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            min-height: 50px;
+            white-space: nowrap;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:active {
+            transform: scale(0.94);
+        }
+        .btn-spin {
+            background: linear-gradient(135deg, #e94560, #ff6b81);
+            color: #fff;
+            box-shadow: 0 6px 24px rgba(233, 68, 96, 0.45);
+            font-size: 1.15rem;
+            padding: 16px 40px;
+            letter-spacing: 0.06em;
+            animation: btnGlow 2.5s ease-in-out infinite;
+        }
+        @keyframes btnGlow {
+            0%,
+            100% {
+                box-shadow: 0 6px 24px rgba(233, 68, 96, 0.45);
+            }
+            50% {
+                box-shadow: 0 8px 36px rgba(233, 68, 96, 0.7);
+            }
+        }
+        .btn-spin:disabled {
+            background: #555;
+            box-shadow: none;
+            animation: none;
+            color: #999;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+            padding: 12px 22px;
+            font-size: 0.9rem;
+        }
+        .btn-outline:hover {
+            border-color: var(--accent2);
+            color: var(--accent2);
+        }
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            border-radius: 25px;
+            min-height: 36px;
+        }
+        .btn-danger {
+            background: var(--btn-danger);
+            color: #fff;
+            border: none;
+        }
+        .btn-success {
+            background: var(--btn-success);
+            color: #fff;
+            border: none;
+        }
+        .btn-ghost {
+            background: var(--btn-secondary);
+            color: #fff;
+            border: none;
+        }
+
+        /* ========== Result Toast ========== */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: var(--card-bg);
+            border: 2px solid var(--accent2);
+            border-radius: var(--radius);
+            padding: 24px 32px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+            transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            max-width: 90vw;
+        }
+        .toast.show {
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        .toast .prize-name {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #f5c518;
+            margin-bottom: 6px;
+        }
+        .toast .prize-detail {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        .toast .close-toast {
+            margin-top: 12px;
+            padding: 8px 24px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9rem;
+            pointer-events: auto;
+        }
+        .toast-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .toast-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ========== Modal (Admin Panel) ========== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            z-index: 2;
+            border-radius: var(--radius) var(--radius) 0 0;
+        }
+        .modal-header h2 {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent2);
+        }
+        .modal-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: var(--btn-danger);
+            border-color: var(--btn-danger);
+        }
+        .modal-body {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .modal-body .section-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .modal-body .section-title::before {
+            content: '';
+            width: 4px;
+            height: 18px;
+            border-radius: 2px;
+            background: var(--accent2);
+            display: inline-block;
+        }
+
+        /* Form */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-group label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+        .form-group input,
+        .form-group select {
+            padding: 10px 14px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: #fff;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: var(--accent2);
+            box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.1);
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .form-row .form-group {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* Prize list in admin */
+        .prize-list-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--radius-xs);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            flex-wrap: wrap;
+        }
+        .prize-list-item:hover {
+            border-color: var(--border);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .prize-list-item .prize-color-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .prize-list-item .prize-info {
+            flex: 1;
+            min-width: 120px;
+        }
+        .prize-list-item .prize-name-text {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+        .prize-list-item .prize-meta {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .prize-list-item .btn-xs {
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: #fff;
+            cursor: pointer;
+            white-space: nowrap;
+            min-height: 28px;
+        }
+        .prize-list-item .btn-xs.danger {
+            border-color: #c0392b;
+            color: #e74c3c;
+        }
+        .prize-list-item .btn-xs.danger:hover {
+            background: #c0392b;
+            color: #fff;
+        }
+
+        /* Record table */
+        .record-table-wrap {
+            max-height: 220px;
+            overflow-y: auto;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border);
+        }
+        .record-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .record-table th,
+        .record-table td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        .record-table th {
+            background: rgba(0, 0, 0, 0.3);
+            position: sticky;
+            top: 0;
+            font-weight: 700;
+            color: var(--accent2);
+            font-size: 0.75rem;
+        }
+        .record-table td {
+            color: var(--text-secondary);
+        }
+
+        /* Tabs in admin */
+        .admin-tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 4px;
+        }
+        .admin-tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            border-radius: 4px 4px 0 0;
+        }
+        .admin-tab.active {
+            color: var(--accent2);
+            border-bottom-color: var(--accent2);
+            background: rgba(245, 197, 24, 0.05);
+        }
+        .admin-tab:hover {
+            color: #fff;
+        }
+
+        /* Password input modal */
+        .pw-modal {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+            text-align: center;
+            border: 1px solid var(--border);
+            max-width: 360px;
+            width: 90%;
+        }
+        .pw-modal h3 {
+            margin-bottom: 16px;
+            color: #fff;
+        }
+        .pw-modal input {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border);
+            background: var(--input-bg);
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+            outline: none;
+        }
+        .pw-modal input:focus {
+            border-color: var(--accent2);
+        }
+        .pw-modal .pw-error {
+            color: #e74c3c;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            min-height: 20px;
+        }
+
+        /* ========== Scrollbar ========== */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+
+        /* ========== Responsive ========== */
+        @media (max-width: 380px) {
+            .btn-spin {
+                padding: 14px 30px;
+                font-size: 1rem;
+            }
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.85rem;
+                min-height: 42px;
+            }
+            .wheel-wrapper {
+                width: 78vw;
+                height: 78vw;
+            }
+            .pointer {
+                border-left-width: 14px;
+                border-right-width: 14px;
+                border-top-width: 26px;
+                top: -14px;
+            }
+            .center-dot {
+                width: 32px;
+                height: 32px;
+            }
+            .modal-body {
+                padding: 12px 14px;
+            }
+            .form-row {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+        @media (min-width: 768px) {
+            .wheel-wrapper {
+                width: 400px;
+                height: 400px;
+            }
+            body {
+                padding: 24px;
+                padding-bottom: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ==================== HEADER ==================== -->
+    <div class="header">
+        <div class="title" id="headerTitle" title="点击进入管理后台">🎰 幸运大转盘</div>
+        <div class="subtitle" id="headerSubtitle">点击标题可进入管理后台</div>
+    </div>
+
+    <!-- ==================== MAIN ==================== -->
+    <div class="main-container">
+        <!-- Wheel -->
+        <div class="wheel-wrapper" id="wheelWrapper">
+            <div class="wheel-container" id="wheelContainer">
+                <canvas id="wheelCanvas"></canvas>
+                <div class="center-dot"></div>
+            </div>
+            <div class="pointer"></div>
+        </div>
+
+        <!-- Info -->
+        <div class="info-bar" id="infoBar">
+            <span>🎯 您已抽奖：<span class="count" id="myCount">0</span> 次</span>
+            <span>📊 剩余次数：<span class="count" id="remainCount">-</span></span>
+        </div>
+
+        <!-- Buttons -->
+        <div class="btn-row">
+            <button class="btn btn-spin" id="btnSpin" title="开始抽奖">🎲 开始抽奖</button>
+            <button class="btn btn-outline btn-sm" id="btnReset" title="重置转盘位置">↻ 重置</button>
+        </div>
+    </div>
+
+    <!-- ==================== TOAST OVERLAY ==================== -->
+    <div class="toast-overlay" id="toastOverlay"></div>
+    <div class="toast" id="toast">
+        <div class="prize-name" id="toastPrizeName"></div>
+        <div class="prize-detail" id="toastPrizeDetail"></div>
+        <button class="close-toast" id="btnCloseToast">确 定</button>
+    </div>
+
+    <!-- ==================== PASSWORD MODAL ==================== -->
+    <div class="modal-overlay" id="pwOverlay">
+        <div class="pw-modal">
+            <h3>🔐 管理员验证</h3>
+            <input type="password" id="pwInput" placeholder="请输入管理密码" autocomplete="off">
+            <div class="pw-error" id="pwError"></div>
+            <button class="btn btn-spin" id="btnPwSubmit" style="width:100%;padding:12px;">验证进入</button>
+            <button class="btn btn-ghost btn-sm" id="btnPwCancel" style="margin-top:8px;width:100%;">取消</button>
+        </div>
+    </div>
+
+    <!-- ==================== ADMIN MODAL ==================== -->
+    <div class="modal-overlay" id="adminOverlay">
+        <div class="modal" id="adminModal">
+            <div class="modal-header">
+                <h2>⚙️ 管理后台</h2>
+                <button class="modal-close" id="btnAdminClose">✕</button>
+            </div>
+            <div class="modal-body" id="adminBody">
+                <!-- Tabs -->
+                <div class="admin-tabs">
+                    <button class="admin-tab active" data-tab="prizes">🎁 奖项设置</button>
+                    <button class="admin-tab" data-tab="records">📋 抽奖记录</button>
+                    <button class="admin-tab" data-tab="settings">🔧 系统设置</button>
+                </div>
+                <!-- Tab: Prizes -->
+                <div id="tabPrizes" style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="section-title">奖项列表</div>
+                    <div id="prizeListContainer" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;">
+                    </div>
+                    <div class="section-title">添加 / 编辑奖项</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>奖项名称</label><input type="text" id="editName" placeholder="如：一等奖"></div>
+                        <div class="form-group"><label>权重（越大越易中奖）</label><input type="number" id="editWeight" placeholder="1-100" min="1" value="1"></div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group"><label>颜色</label><input type="color" id="editColor" value="#e94560"></div>
+                        <div class="form-group"><label>图片URL（可选）</label><input type="text" id="editImage" placeholder="https://... 或留空"></div>
+                    </div>
+                    <input type="hidden" id="editId" value="">
+                    <div class="btn-row" style="justify-content:flex-start;">
+                        <button class="btn btn-success btn-sm" id="btnSavePrize">💾 保存奖项</button>
+                        <button class="btn btn-ghost btn-sm" id="btnCancelEdit">取消编辑</button>
+                    </div>
+                </div>
+                <!-- Tab: Records -->
+                <div id="tabRecords" style="display:none;flex-direction:column;gap:12px;">
+                    <div class="section-title">抽奖记录</div>
+                    <div class="record-table-wrap">
+                        <table class="record-table">
+                            <thead><tr><th>#</th><th>奖项</th><th>时间</th><th>设备ID</th></tr></thead>
+                            <tbody id="recordTableBody"><tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">暂无记录</td></tr></tbody>
+                        </table>
+                    </div>
+                    <div class="btn-row" style="justify-content:flex-start;">
+                        <button class="btn btn-success btn-sm" id="btnExportCSV">📥 导出CSV</button>
+                        <button class="btn btn-danger btn-sm" id="btnClearRecords">🗑 清空记录</button>
+                    </div>
+                </div>
+                <!-- Tab: Settings -->
+                <div id="tabSettings" style="display:none;flex-direction:column;gap:12px;">
+                    <div class="section-title">系统设置</div>
+                    <div class="form-row">
+                        <div class="form-group"><label>每人抽奖次数上限（0=不限）</label><input type="number" id="editPerPersonLimit" min="0" value="0"></div>
+                        <div class="form-group"><label>全局抽奖次数上限（0=不限）</label><input type="number" id="editGlobalLimit" min="0" value="0"></div>
+                    </div>
+                    <div class="form-group"><label>修改管理员密码</label><input type="text" id="editAdminPassword" placeholder="新密码（留空不修改）"></div>
+                    <div class="form-group"><label>转盘标题</label><input type="text" id="editTitle" placeholder="幸运大转盘"></div>
+                    <button class="btn btn-success btn-sm" id="btnSaveSettings" style="align-self:flex-start;">💾 保存设置</button>
+                    <button class="btn btn-danger btn-sm" id="btnResetAll" style="align-self:flex-start;">⚠️ 恢复出厂设置</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== CONSTANTS ====================
+            const STORAGE_KEY_PREFIX = 'lucky_wheel_';
+            const DEFAULT_PASSWORD = 'admin123';
+            const DEFAULT_PRIZES = [
+                { id: 'p1', name: '🏆 一等奖', weight: 1, color: '#e94560', imageUrl: '' },
+                { id: 'p2', name: '🥈 二等奖', weight: 2, color: '#f5c518', imageUrl: '' },
+                { id: 'p3', name: '🎁 三等奖', weight: 3, color: '#4ecdc4', imageUrl: '' },
+                { id: 'p4', name: '🧧 参与奖', weight: 5, color: '#ff6b6b', imageUrl: '' },
+                { id: 'p5', name: '🍀 幸运奖', weight: 6, color: '#a29bfe', imageUrl: '' },
+                { id: 'p6', name: '😊 谢谢参与', weight: 8, color: '#636e72', imageUrl: '' },
+            ];
+
+            // ==================== DOM REFS ====================
+            const $ = (sel) => document.querySelector(sel);
+            const $$ = (sel) => document.querySelectorAll(sel);
+
+            const wheelCanvas = $('#wheelCanvas');
+            const wheelContainer = $('#wheelContainer');
+            const wheelWrapper = $('#wheelWrapper');
+            const btnSpin = $('#btnSpin');
+            const btnReset = $('#btnReset');
+            const headerTitle = $('#headerTitle');
+            const headerSubtitle = $('#headerSubtitle');
+            const infoBar = $('#infoBar');
+            const myCountEl = $('#myCount');
+            const remainCountEl = $('#remainCount');
+            const toastOverlay = $('#toastOverlay');
+            const toast = $('#toast');
+            const toastPrizeName = $('#toastPrizeName');
+            const toastPrizeDetail = $('#toastPrizeDetail');
+            const btnCloseToast = $('#btnCloseToast');
+            const pwOverlay = $('#pwOverlay');
+            const pwInput = $('#pwInput');
+            const pwError = $('#pwError');
+            const btnPwSubmit = $('#btnPwSubmit');
+            const btnPwCancel = $('#btnPwCancel');
+            const adminOverlay = $('#adminOverlay');
+            const adminModal = $('#adminModal');
+            const btnAdminClose = $('#btnAdminClose');
+            const adminBody = $('#adminBody');
+
+            // ==================== STATE ====================
+            let prizes = [];
+            let records = [];
+            let settings = {
+                adminPassword: DEFAULT_PASSWORD,
+                perPersonLimit: 0,
+                globalLimit: 0,
+                title: '幸运大转盘',
+            };
+            let deviceId = '';
+            let currentRotation = 0; // 当前转盘旋转角度（弧度，顺时针）
+            let isSpinning = false;
+            let prizeImages = {}; // {prizeId: HTMLImageElement}
+            let imageLoadPromises = [];
+
+            // ==================== STORAGE ====================
+            function getStorageKey(key) {
+                return STORAGE_KEY_PREFIX + key;
+            }
+
+            function saveData() {
+                try {
+                    localStorage.setItem(getStorageKey('prizes'), JSON.stringify(prizes));
+                    localStorage.setItem(getStorageKey('records'), JSON.stringify(records));
+                    localStorage.setItem(getStorageKey('settings'), JSON.stringify(settings));
+                    localStorage.setItem(getStorageKey('deviceId'), deviceId);
+                } catch (e) {
+                    console.warn('localStorage 存储失败:', e);
+                }
+            }
+
+            function loadData() {
+                try {
+                    const sp = localStorage.getItem(getStorageKey('prizes'));
+                    prizes = sp ? JSON.parse(sp) : JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+
+                    const sr = localStorage.getItem(getStorageKey('records'));
+                    records = sr ? JSON.parse(sr) : [];
+
+                    const ss = localStorage.getItem(getStorageKey('settings'));
+                    settings = ss ? JSON.parse(ss) : {
+                        adminPassword: DEFAULT_PASSWORD,
+                        perPersonLimit: 0,
+                        globalLimit: 0,
+                        title: '幸运大转盘',
+                    };
+                    // 确保默认密码存在
+                    if (!settings.adminPassword) settings.adminPassword = DEFAULT_PASSWORD;
+
+                    deviceId = localStorage.getItem(getStorageKey('deviceId')) || generateDeviceId();
+                    if (!localStorage.getItem(getStorageKey('deviceId'))) {
+                        localStorage.setItem(getStorageKey('deviceId'), deviceId);
+                    }
+
+                    // 确保prizes有id
+                    prizes = prizes.map((p, i) => {
+                        if (!p.id) p.id = 'p' + Date.now() + '_' + i;
+                        if (p.weight === undefined || p.weight <= 0) p.weight = 1;
+                        if (!p.color) p.color = '#636e72';
+                        if (!p.imageUrl) p.imageUrl = '';
+                        return p;
+                    });
+                } catch (e) {
+                    console.warn('localStorage 读取失败，使用默认数据:', e);
+                    prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+                    records = [];
+                    settings = { adminPassword: DEFAULT_PASSWORD, perPersonLimit: 0, globalLimit: 0,
+                        title: '幸运大转盘' };
+                    deviceId = generateDeviceId();
+                }
+                saveData();
+            }
+
+            function generateDeviceId() {
+                const timestamp = Date.now().toString(36);
+                const random = Math.random().toString(36).substring(2, 10);
+                return 'dev_' + timestamp + '_' + random;
+            }
+
+            // ==================== IMAGE LOADING ====================
+            function preloadImages() {
+                prizeImages = {};
+                imageLoadPromises = [];
+                prizes.forEach((prize) => {
+                    if (prize.imageUrl && prize.imageUrl.trim()) {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        const promise = new Promise((resolve) => {
+                            img.onload = () => {
+                                prizeImages[prize.id] = img;
+                                resolve();
+                            };
+                            img.onerror = () => {
+                                prizeImages[prize.id] = null;
+                                resolve(); // 加载失败也resolve，使用颜色填充
+                            };
+                            // 超时处理
+                            setTimeout(() => {
+                                if (!prizeImages[prize.id]) {
+                                    prizeImages[prize.id] = null;
+                                    resolve();
+                                }
+                            }, 5000);
+                        });
+                        img.src = prize.imageUrl.trim();
+                        imageLoadPromises.push(promise);
+                        prizeImages[prize.id] = null; // 占位
+                    } else {
+                        prizeImages[prize.id] = null;
+                    }
+                });
+                return Promise.all(imageLoadPromises);
+            }
+
+            // ==================== CANVAS DRAWING ====================
+            function getCanvasContext() {
+                const dpr = Math.min(window.devicePixelRatio || 1, 2); // 限制像素比以提升性能
+                const rect = wheelCanvas.getBoundingClientRect();
+                const size = rect.width;
+                if (wheelCanvas.width !== size * dpr || wheelCanvas.height !== size * dpr) {
+                    wheelCanvas.width = size * dpr;
+                    wheelCanvas.height = size * dpr;
+                }
+                const ctx = wheelCanvas.getContext('2d');
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(dpr, dpr);
+                ctx.clearRect(0, 0, size, size);
+                return { ctx, size, dpr };
+            }
+
+            function drawWheel(rotationAngle) {
+                const { ctx, size } = getCanvasContext();
+                const cx = size / 2;
+                const cy = size / 2;
+                const radius = size / 2 - 6;
+                const totalWeight = prizes.reduce((sum, p) => sum + (p.weight || 1), 0);
+
+                if (totalWeight <= 0 || prizes.length === 0) {
+                    // 空状态
+                    ctx.fillStyle = '#2a2a3a';
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#888';
+                    ctx.font = 'bold 16px -apple-system, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('请添加奖项', cx, cy);
+                    return;
+                }
+
+                let startAngle = -Math.PI / 2 + rotationAngle; // 从顶部开始，加上旋转角度
+
+                prizes.forEach((prize) => {
+                    const sliceAngle = (prize.weight / totalWeight) * Math.PI * 2;
+                    const endAngle = startAngle + sliceAngle;
+
+                    // 绘制扇区
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.arc(cx, cy, radius, startAngle, endAngle);
+                    ctx.closePath();
+
+                    // 填充颜色
+                    ctx.fillStyle = prize.color || '#636e72';
+                    ctx.fill();
+
+                    // 边框
+                    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+
+                    // 如果有图片，绘制在扇区中
+                    const img = prizeImages[prize.id];
+                    if (img && img.complete && img.naturalWidth > 0) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.arc(cx, cy, radius, startAngle, endAngle);
+                        ctx.closePath();
+                        ctx.clip();
+
+                        const midAngle = startAngle + sliceAngle / 2;
+                        const imgSize = Math.min(radius * 0.5, 50);
+                        const imgX = cx + Math.cos(midAngle) * radius * 0.55 - imgSize / 2;
+                        const imgY = cy + Math.sin(midAngle) * radius * 0.55 - imgSize / 2;
+                        ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+                        ctx.restore();
+                    }
+
+                    // 绘制文字
+                    const midAngle = startAngle + sliceAngle / 2;
+                    const textRadius = radius * 0.68;
+                    const textX = cx + Math.cos(midAngle) * textRadius;
+                    const textY = cy + Math.sin(midAngle) * textRadius;
+
+                    ctx.save();
+                    ctx.translate(textX, textY);
+                    ctx.rotate(midAngle + Math.PI / 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 13px -apple-system, "PingFang SC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+                    ctx.shadowBlur = 3;
+                    // 截断长文字
+                    let displayName = prize.name || '';
+                    if (displayName.length > 8) displayName = displayName.substring(0, 7) + '…';
+                    ctx.fillText(displayName, 0, 0);
+                    ctx.shadowBlur = 0;
+                    ctx.restore();
+
+                    startAngle = endAngle;
+                });
+
+                // 外圈装饰
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius + 2, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 内圈阴影环
+                const innerGrad = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius);
+                innerGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                innerGrad.addColorStop(1, 'rgba(0,0,0,0.25)');
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.fillStyle = innerGrad;
+                ctx.fill();
+            }
+
+            function redrawWheel() {
+                drawWheel(currentRotation);
+            }
+
+            // ==================== SPIN LOGIC ====================
+            function getWeightedRandomPrize() {
+                const totalWeight = prizes.reduce((sum, p) => sum + (p.weight || 1), 0);
+                if (totalWeight <= 0) return null;
+                let rand = Math.random() * totalWeight;
+                for (const prize of prizes) {
+                    rand -= (prize.weight || 1);
+                    if (rand <= 0) return prize;
+                }
+                return prizes[prizes.length - 1];
+            }
+
+            function getPrizeAngleOnWheel(prize) {
+                const totalWeight = prizes.reduce((sum, p) => sum + (p.weight || 1), 0);
+                let cumulativeAngle = -Math.PI / 2; // 起始角度（顶部）
+                for (const p of prizes) {
+                    const sliceAngle = (p.weight / totalWeight) * Math.PI * 2;
+                    if (p.id === prize.id) {
+                        // 返回该扇区中心的角度（相对于转盘本身）
+                        return cumulativeAngle + sliceAngle / 2;
+                    }
+                    cumulativeAngle += sliceAngle;
+                }
+                return -Math.PI / 2;
+            }
+
+            function spin() {
+                if (isSpinning) return;
+                if (prizes.length === 0) {
+                    showToast('⚠️', '请先设置奖项', true);
+                    return;
+                }
+
+                // 检查次数限制
+                const myRecords = records.filter(r => r.deviceId === deviceId);
+                const myCount = myRecords.length;
+                const globalCount = records.length;
+
+                if (settings.perPersonLimit > 0 && myCount >= settings.perPersonLimit) {
+                    showToast('⛔', '您已达到个人抽奖次数上限', true);
+                    return;
+                }
+                if (settings.globalLimit > 0 && globalCount >= settings.globalLimit) {
+                    showToast('⛔', '全局抽奖次数已用完', true);
+                    return;
+                }
+
+                isSpinning = true;
+                btnSpin.disabled = true;
+                wheelContainer.classList.add('spinning');
+
+                // 根据权重选择中奖奖项
+                const targetPrize = getWeightedRandomPrize();
+                if (!targetPrize) {
+                    isSpinning = false;
+                    btnSpin.disabled = false;
+                    wheelContainer.classList.remove('spinning');
+                    return;
+                }
+
+                // 计算目标角度
+                const targetAngleOnWheel = getPrizeAngleOnWheel(targetPrize);
+                // 指针在顶部（-π/2），转盘旋转了currentRotation
+                // 指针指向转盘上的角度 = (-π/2 - currentRotation) mod 2π
+                // 我们需要指针指向targetAngleOnWheel
+                // 即：(-π/2 - finalRotation) ≡ targetAngleOnWheel (mod 2π)
+                // finalRotation = -π/2 - targetAngleOnWheel (mod 2π)
+                let desiredRotation = (-Math.PI / 2 - targetAngleOnWheel) % (Math.PI * 2);
+                if (desiredRotation < 0) desiredRotation += Math.PI * 2;
+
+                // 从当前角度到目标角度，加上多圈旋转
+                const currentNorm = ((currentRotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+                let delta = desiredRotation - currentNorm;
+                if (delta < 0) delta += Math.PI * 2;
+                // 添加5-8圈
+                const extraSpins = (5 + Math.floor(Math.random() * 4)) * Math.PI * 2;
+                const totalRotation = currentRotation + extraSpins + delta;
+
+                // 动画
+                const startRotation = currentRotation;
+                const totalDistance = totalRotation - startRotation;
+                const duration = 4000 + Math.random() * 1500; // 4-5.5秒
+                const startTime = performance.now();
+
+                function animate(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    // 缓出函数（ease-out cubic）
+                    const eased = 1 - Math.pow(1 - progress, 3.5);
+                    currentRotation = startRotation + totalDistance * eased;
+                    drawWheel(currentRotation);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        // 动画结束
+                        currentRotation = totalRotation % (Math.PI * 2);
+                        if (currentRotation < 0) currentRotation += Math.PI * 2;
+                        drawWheel(currentRotation);
+                        onSpinComplete(targetPrize);
+                    }
+                }
+
+                requestAnimationFrame(animate);
+            }
+
+            function onSpinComplete(prize) {
+                // 记录
+                const record = {
+                    id: 'r' + Date.now(),
+                    prizeName: prize.name,
+                    prizeId: prize.id,
+                    time: new Date().toISOString(),
+                    deviceId: deviceId,
+                };
+                records.push(record);
+                saveData();
+                updateInfoBar();
+
+                // 延迟显示结果
+                setTimeout(() => {
+                    wheelContainer.classList.remove('spinning');
+                    isSpinning = false;
+                    btnSpin.disabled = false;
+                    showToast('🎉', prize.name, false);
+                }, 300);
+            }
+
+            function resetWheel() {
+                if (isSpinning) return;
+                // 平滑回到0度
+                const startRotation = currentRotation;
+                const targetRotation = 0;
+                const duration = 600;
+                const startTime = performance.now();
+
+                function animateReset(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 2.5);
+                    currentRotation = startRotation + (targetRotation - startRotation) * eased;
+                    drawWheel(currentRotation);
+                    if (progress < 1) {
+                        requestAnimationFrame(animateReset);
+                    } else {
+                        currentRotation = 0;
+                        drawWheel(currentRotation);
+                    }
+                }
+                requestAnimationFrame(animateReset);
+            }
+
+            // ==================== TOAST ====================
+            function showToast(icon, message, isWarning) {
+                toastPrizeName.textContent = (icon || '') + ' ' + message;
+                toastPrizeDetail.textContent = isWarning ? '' : '恭喜中奖！';
+                toastOverlay.classList.add('show');
+                toast.classList.add('show');
+                if (isWarning) {
+                    toast.style.borderColor = '#e74c3c';
+                } else {
+                    toast.style.borderColor = '#f5c518';
+                }
+            }
+
+            function hideToast() {
+                toastOverlay.classList.remove('show');
+                toast.classList.remove('show');
+            }
+
+            // ==================== INFO BAR ====================
+            function updateInfoBar() {
+                const myRecords = records.filter(r => r.deviceId === deviceId);
+                const myCount = myRecords.length;
+                const globalCount = records.length;
+
+                myCountEl.textContent = myCount;
+
+                let remainText = '不限';
+                const limits = [];
+                if (settings.perPersonLimit > 0) {
+                    const remain = Math.max(0, settings.perPersonLimit - myCount);
+                    limits.push('个人剩' + remain);
+                }
+                if (settings.globalLimit > 0) {
+                    const remain = Math.max(0, settings.globalLimit - globalCount);
+                    limits.push('全局剩' + remain);
+                }
+                if (limits.length > 0) {
+                    remainText = limits.join(' / ');
+                }
+                remainCountEl.textContent = remainText;
+
+                // 检查是否已达上限
+                const personExhausted = settings.perPersonLimit > 0 && myCount >= settings.perPersonLimit;
+                const globalExhausted = settings.globalLimit > 0 && globalCount >= settings.globalLimit;
+                if (personExhausted || globalExhausted) {
+                    remainCountEl.classList.add('limit');
+                    btnSpin.disabled = true;
+                    btnSpin.textContent = '🚫 次数已用完';
+                } else {
+                    remainCountEl.classList.remove('limit');
+                    if (!isSpinning) {
+                        btnSpin.disabled = false;
+                        btnSpin.textContent = '🎲 开始抽奖';
+                    }
+                }
+            }
+
+            // ==================== ADMIN PANEL ====================
+            function openAdminPanel() {
+                populateAdminFields();
+                adminOverlay.classList.add('show');
+                // 默认显示奖项tab
+                switchAdminTab('prizes');
+                document.querySelector('.admin-tab[data-tab="prizes"]')?.classList.add('active');
+                document.querySelector('.admin-tab[data-tab="records"]')?.classList.remove('active');
+                document.querySelector('.admin-tab[data-tab="settings"]')?.classList.remove('active');
+            }
+
+            function closeAdminPanel() {
+                adminOverlay.classList.remove('show');
+                // 刷新主界面
+                preloadImages().then(() => {
+                    redrawWheel();
+                    updateInfoBar();
+                    updateTitleDisplay();
+                });
+            }
+
+            function switchAdminTab(tab) {
+                document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+                document.querySelector(`.admin-tab[data-tab="${tab}"]`)?.classList.add('active');
+                $('#tabPrizes').style.display = tab === 'prizes' ? 'flex' : 'none';
+                $('#tabRecords').style.display = tab === 'records' ? 'flex' : 'none';
+                $('#tabSettings').style.display = tab === 'settings' ? 'flex' : 'none';
+
+                if (tab === 'prizes') renderPrizeList();
+                if (tab === 'records') renderRecordTable();
+                if (tab === 'settings') populateSettingsFields();
+            }
+
+            function populateAdminFields() {
+                document.getElementById('editId').value = '';
+                document.getElementById('editName').value = '';
+                document.getElementById('editWeight').value = '1';
+                document.getElementById('editColor').value = '#e94560';
+                document.getElementById('editImage').value = '';
+            }
+
+            function renderPrizeList() {
+                const container = $('#prizeListContainer');
+                if (prizes.length === 0) {
+                    container.innerHTML =
+                        '<div style="color:var(--text-secondary);text-align:center;padding:20px;">暂无奖项，请添加</div>';
+                    return;
+                }
+                container.innerHTML = prizes.map((p, i) => `
+                    <div class="prize-list-item">
+                        <span class="prize-color-dot" style="background:${p.color};"></span>
+                        <span class="prize-info">
+                            <span class="prize-name-text">${escapeHtml(p.name)}</span>
+                            <span class="prize-meta">权重:${p.weight}${p.imageUrl?' 📷':''}</span>
+                        </span>
+                        <button class="btn-xs" onclick="window._editPrize('${p.id}')">✏️</button>
+                        <button class="btn-xs danger" onclick="window._deletePrize('${p.id}')">🗑</button>
+                    </div>
+                `).join('');
+            }
+
+            function renderRecordTable() {
+                const tbody = $('#recordTableBody');
+                if (records.length === 0) {
+                    tbody.innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:var(--text-secondary);">暂无记录</td></tr>';
+                    return;
+                }
+                // 倒序显示最新在前
+                const recent = [...records].reverse().slice(0, 100);
+                tbody.innerHTML = recent.map((r, i) => `
+                    <tr>
+                        <td>${records.length - i}</td>
+                        <td>${escapeHtml(r.prizeName)}</td>
+                        <td>${formatTime(r.time)}</td>
+                        <td style="font-size:0.7rem;font-family:var(--font-mono);">${escapeHtml(r.deviceId.substring(0,12))}…</td>
+                    </tr>
+                `).join('');
+            }
+
+            function populateSettingsFields() {
+                document.getElementById('editPerPersonLimit').value = settings.perPersonLimit;
+                document.getElementById('editGlobalLimit').value = settings.globalLimit;
+                document.getElementById('editAdminPassword').value = '';
+                document.getElementById('editTitle').value = settings.title || '幸运大转盘';
+            }
+
+            function savePrize() {
+                const id = document.getElementById('editId').value;
+                const name = document.getElementById('editName').value.trim();
+                const weight = parseInt(document.getElementById('editWeight').value) || 1;
+                const color = document.getElementById('editColor').value || '#636e72';
+                const imageUrl = document.getElementById('editImage').value.trim();
+
+                if (!name) {
+                    alert('请输入奖项名称');
+                    return;
+                }
+                if (weight < 1) {
+                    alert('权重至少为1');
+                    return;
+                }
+
+                if (id) {
+                    // 编辑
+                    const idx = prizes.findIndex(p => p.id === id);
+                    if (idx >= 0) {
+                        prizes[idx].name = name;
+                        prizes[idx].weight = weight;
+                        prizes[idx].color = color;
+                        prizes[idx].imageUrl = imageUrl;
+                    }
+                } else {
+                    // 新增
+                    prizes.push({
+                        id: 'p' + Date.now(),
+                        name,
+                        weight,
+                        color,
+                        imageUrl,
+                    });
+                }
+
+                saveData();
+                populateAdminFields();
+                renderPrizeList();
+                preloadImages().then(() => redrawWheel());
+            }
+
+            function editPrize(prizeId) {
+                const prize = prizes.find(p => p.id === prizeId);
+                if (!prize) return;
+                document.getElementById('editId').value = prize.id;
+                document.getElementById('editName').value = prize.name;
+                document.getElementById('editWeight').value = prize.weight;
+                document.getElementById('editColor').value = prize.color;
+                document.getElementById('editImage').value = prize.imageUrl || '';
+                // 滚动到编辑区域
+                document.getElementById('editName').scrollIntoView({ behavior: 'smooth' });
+            }
+
+            function deletePrize(prizeId) {
+                if (!confirm('确定要删除该奖项吗？')) return;
+                prizes = prizes.filter(p => p.id !== prizeId);
+                saveData();
+                renderPrizeList();
+                preloadImages().then(() => redrawWheel());
+                updateInfoBar();
+            }
+
+            function saveSettings() {
+                const perPersonLimit = parseInt(document.getElementById('editPerPersonLimit').value) || 0;
+                const globalLimit = parseInt(document.getElementById('editGlobalLimit').value) || 0;
+                const newPassword = document.getElementById('editAdminPassword').value.trim();
+                const newTitle = document.getElementById('editTitle').value.trim();
+
+                settings.perPersonLimit = Math.max(0, perPersonLimit);
+                settings.globalLimit = Math.max(0, globalLimit);
+                if (newPassword) {
+                    settings.adminPassword = newPassword;
+                    document.getElementById('editAdminPassword').value = '';
+                }
+                if (newTitle) {
+                    settings.title = newTitle;
+                }
+
+                saveData();
+                updateInfoBar();
+                updateTitleDisplay();
+                alert('✅ 设置已保存！');
+                populateSettingsFields();
+            }
+
+            function resetAll() {
+                if (!confirm('⚠️ 确定要恢复出厂设置吗？\n\n这将清除所有奖项、记录和设置！')) return;
+                if (!confirm('再次确认：此操作不可恢复！')) return;
+                prizes = JSON.parse(JSON.stringify(DEFAULT_PRIZES));
+                records = [];
+                settings = {
+                    adminPassword: DEFAULT_PASSWORD,
+                    perPersonLimit: 0,
+                    globalLimit: 0,
+                    title: '幸运大转盘',
+                };
+                saveData();
+                preloadImages().then(() => {
+                    redrawWheel();
+                    updateInfoBar();
+                    updateTitleDisplay();
+                    renderPrizeList();
+                    renderRecordTable();
+                    populateSettingsFields();
+                    populateAdminFields();
+                });
+                alert('✅ 已恢复出厂设置');
+            }
+
+            function exportCSV() {
+                if (records.length === 0) {
+                    alert('暂无记录可导出');
+                    return;
+                }
+                // BOM for Excel UTF-8
+                let csv = '\uFEFF序号,奖项名称,时间,设备ID\n';
+                records.forEach((r, i) => {
+                    csv +=
+                        `${i+1},"${r.prizeName.replace(/"/g,'""')}","${formatTime(r.time)}","${r.deviceId}"\n`;
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `抽奖记录_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function clearRecords() {
+                if (!confirm('确定要清空所有抽奖记录吗？')) return;
+                records = [];
+                saveData();
+                updateInfoBar();
+                renderRecordTable();
+                alert('✅ 记录已清空');
+            }
+
+            function updateTitleDisplay() {
+                headerTitle.textContent = '🎰 ' + (settings.title || '幸运大转盘');
+                document.title = settings.title || '幸运大转盘';
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            function formatTime(isoString) {
+                try {
+                    const d = new Date(isoString);
+                    const pad = (n) => String(n).padStart(2, '0');
+                    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                } catch (e) {
+                    return isoString;
+                }
+            }
+
+            // ==================== PASSWORD MODAL ====================
+            function showPasswordModal() {
+                pwOverlay.classList.add('show');
+                pwInput.value = '';
+                pwError.textContent = '';
+                setTimeout(() => pwInput.focus(), 200);
+            }
+
+            function hidePasswordModal() {
+                pwOverlay.classList.remove('show');
+                pwInput.value = '';
+                pwError.textContent = '';
+            }
+
+            function submitPassword() {
+                const entered = pwInput.value.trim();
+                if (entered === settings.adminPassword) {
+                    hidePasswordModal();
+                    openAdminPanel();
+                } else {
+                    pwError.textContent = '❌ 密码错误，请重试';
+                    pwInput.value = '';
+                    pwInput.focus();
+                    pwInput.classList.add('shake');
+                    setTimeout(() => pwInput.classList.remove('shake'), 400);
+                }
+            }
+
+            // ==================== EVENT LISTENERS ====================
+            btnSpin.addEventListener('click', spin);
+            btnReset.addEventListener('click', resetWheel);
+
+            // 也支持点击转盘来旋转（移动端友好）
+            wheelWrapper.addEventListener('click', (e) => {
+                if (e.target === wheelCanvas || e.target.closest('.wheel-container') || e.target.closest(
+                        '.center-dot')) {
+                    if (!isSpinning) spin();
+                }
+            });
+
+            btnCloseToast.addEventListener('click', hideToast);
+            toastOverlay.addEventListener('click', (e) => {
+                if (e.target === toastOverlay) hideToast();
+            });
+
+            // 标题点击进入管理后台
+            headerTitle.addEventListener('click', showPasswordModal);
+            headerSubtitle.addEventListener('click', showPasswordModal);
+
+            // 密码弹窗
+            btnPwSubmit.addEventListener('click', submitPassword);
+            btnPwCancel.addEventListener('click', hidePasswordModal);
+            pwOverlay.addEventListener('click', (e) => {
+                if (e.target === pwOverlay) hidePasswordModal();
+            });
+            pwInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') submitPassword();
+            });
+
+            // 管理后台
+            btnAdminClose.addEventListener('click', closeAdminPanel);
+            adminOverlay.addEventListener('click', (e) => {
+                if (e.target === adminOverlay) closeAdminPanel();
+            });
+
+            // Admin tabs
+            adminBody.addEventListener('click', (e) => {
+                if (e.target.classList.contains('admin-tab')) {
+                    switchAdminTab(e.target.dataset.tab);
+                }
+            });
+
+            // Save prize
+            document.getElementById('btnSavePrize').addEventListener('click', savePrize);
+            document.getElementById('btnCancelEdit').addEventListener('click', populateAdminFields);
+            document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+            document.getElementById('btnClearRecords').addEventListener('click', clearRecords);
+            document.getElementById('btnSaveSettings').addEventListener('click', saveSettings);
+            document.getElementById('btnResetAll').addEventListener('click', resetAll);
+
+            // 暴露编辑/删除函数到全局
+            window._editPrize = editPrize;
+            window._deletePrize = deletePrize;
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (adminOverlay.classList.contains('show')) closeAdminPanel();
+                    else if (pwOverlay.classList.contains('show')) hidePasswordModal();
+                    else if (toastOverlay.classList.contains('show')) hideToast();
+                }
+                if (e.key === ' ' && !isSpinning &&
+                    !adminOverlay.classList.contains('show') &&
+                    !pwOverlay.classList.contains('show') &&
+                    !toastOverlay.classList.contains('show') &&
+                    document.activeElement === document.body) {
+                    e.preventDefault();
+                    spin();
+                }
+            });
+
+            // 窗口大小变化时重绘
+            let resizeDebounce;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeDebounce);
+                resizeDebounce = setTimeout(() => {
+                    preloadImages().then(() => redrawWheel());
+                }, 200);
+            });
+
+            // 页面可见性变化时刷新
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    updateInfoBar();
+                    preloadImages().then(() => redrawWheel());
+                }
+            });
+
+            // ==================== PWA ====================
+            function setupPWA() {
+                // 动态创建 manifest
+                const manifestData = {
+                    name: '幸运大转盘',
+                    short_name: '大转盘',
+                    description: '幸运大转盘抽奖工具',
+                    start_url: location.href.split('?')[0],
+                    display: 'standalone',
+                    orientation: 'portrait',
+                    background_color: '#1a1a2e',
+                    theme_color: '#1a1a2e',
+                    icons: [{
+                        src: 'data:image/svg+xml,' + encodeURIComponent(
+                            '<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192"><circle cx="96" cy="96" r="88" fill="#1a1a2e" stroke="#f5c518" stroke-width="8"/><circle cx="96" cy="96" r="60" fill="none" stroke="#e94560" stroke-width="3" stroke-dasharray="20,8"/><circle cx="96" cy="96" r="40" fill="none" stroke="#f5c518" stroke-width="3" stroke-dasharray="12,6"/><circle cx="96" cy="96" r="16" fill="#f5c518"/><polygon points="96,4 84,32 108,32" fill="#f5c518"/></svg>'
+                        ),
+                        sizes: '192x192',
+                        type: 'image/svg+xml',
+                    }, ],
+                };
+
+                const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+                const manifestUrl = URL.createObjectURL(manifestBlob);
+                const link = document.createElement('link');
+                link.rel = 'manifest';
+                link.href = manifestUrl;
+                document.head.appendChild(link);
+
+                // 尝试注册service worker（可选，失败不影响）
+                if ('serviceWorker' in navigator && location.protocol === 'https:') {
+                    const swCode = `
+                        const CACHE_NAME = 'lucky-wheel-v1';
+                        const ASSETS = ['/'];
+                        self.addEventListener('install', e => {
+                            e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS).catch(() => {})));
+                            self.skipWaiting();
+                        });
+                        self.addEventListener('activate', e => {
+                            e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+                            self.clients.claim();
+                        });
+                        self.addEventListener('fetch', e => {
+                            e.respondWith(caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+                                if(res.ok){const clone=res.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,clone));}
+                                return res;
+                            }).catch(() => caches.match(e.request))));
+                        });
+                    `;
+                    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                    const swUrl = URL.createObjectURL(swBlob);
+                    // 注意：blob URL的service worker在某些浏览器可能不被支持
+                    navigator.serviceWorker.register(swUrl).catch(() => {
+                        // 静默失败，PWA的核心功能（manifest）已就绪
+                    });
+                }
+            }
+
+            // ==================== INIT ====================
+            function init() {
+                loadData();
+                updateTitleDisplay();
+                updateInfoBar();
+                preloadImages().then(() => {
+                    currentRotation = 0;
+                    redrawWheel();
+                });
+                setupPWA();
+
+                // 初始检查按钮状态
+                const myRecords = records.filter(r => r.deviceId === deviceId);
+                const personExhausted = settings.perPersonLimit > 0 && myRecords.length >= settings
+                    .perPersonLimit;
+                const globalExhausted = settings.globalLimit > 0 && records.length >= settings.globalLimit;
+                if (personExhausted || globalExhausted) {
+                    btnSpin.disabled = true;
+                    btnSpin.textContent = '🚫 次数已用完';
+                }
+
+                console.log('✅ 幸运大转盘已就绪');
+                console.log('   📱 设备ID:', deviceId.substring(0, 16) + '…');
+                console.log('   🎁 奖项数:', prizes.length);
+                console.log('   📋 记录数:', records.length);
+                console.log('   🔐 点击标题进入管理后台');
+                console.log('   ⌨️  按空格键快速抽奖');
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
